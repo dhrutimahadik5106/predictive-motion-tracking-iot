@@ -1,0 +1,62 @@
+{
+  "sensors": [
+    {
+      "id": 1,
+      "name": "Left Sensor",
+      "x": 30,
+      "y": 30,
+      "color": "#ff4444",
+      "range": 40,
+      "servo_pin": 9,
+      "echo_pin": 10,
+      "trig_pin": 11
+    },
+    {
+      "id": 2,
+      "name": "Right Sensor",
+      "x": 70,
+      "y": 30,
+      "color": "#00ff88",
+      "range": 40,
+      "servo_pin": 5,
+      "echo_pin": 6,
+      "trig_pin": 7
+    },
+    {
+      "id": 3,
+      "name": "Bottom Sensor",
+      "x": 50,
+      "y": 70,
+      "color": "#4444ff",
+      "range": 40,
+      "servo_pin": 2,
+      "echo_pin": 3,
+      "trig_pin": 4
+    }
+  ],
+  "detection_zones": [
+    {
+      "name": "Restricted Area 1",
+      "type": "circle",
+      "x": 50,
+      "y": 50,
+      "radius": 15,
+      "threat_level": "HIGH"
+    },
+    {
+      "name": "VIP Zone",
+      "type": "rectangle",
+      "x1": 20,
+      "y1": 20,
+      "x2": 40,
+      "y2": 40,
+      "threat_level": "CRITICAL"
+    }
+  ],
+  "tracking_params": {
+    "max_objects": 5,
+    "history_length": 100,
+    "prediction_method": "kalman",
+    "confidence_threshold": 0.7
+  }
+}

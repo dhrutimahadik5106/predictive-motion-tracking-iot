@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Object Tracking System | 3D Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #0a0f1e;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* Main Layout */
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            height: 100vh;
+            gap: 15px;
+            padding: 15px;
+            background: #0a0f1e;
+        }
+
+        /* Left Panel - Controls */
+        .left-panel {
+            background: #1a1f2f;
+            border-radius: 15px;
+            border: 1px solid #2a3248;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .panel-title {
+            color: #00ff88;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #00ff88;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Object Control Section */
+        .control-section {
+            background: #0f1625;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #8b95b0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .object-count-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #1a1f2f;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .count-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #00ff88;
+            background: transparent;
+            color: #00ff88;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .count-btn:hover {
+            background: #00ff88;
+            color: #0a0f1a;
+        }
+
+        .count-display {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00ff88;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .object-list {
+            margin-top: 15px;
+        }
+
+        .object-item {
+            background: #1a1f2f;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 4px solid;
+        }
+
+        .object-item.selected {
+            background: #252e42;
+            transform: translateX(5px);
+        }
+
+        .object-item.high { border-left-color: #ff4444; }
+        .object-item.medium { border-left-color: #ffaa00; }
+        .object-item.low { border-left-color: #00ff88; }
+
+        .object-info h4 {
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .object-info p {
+            color: #8b95b0;
+            font-size: 12px;
+        }
+
+        .object-threat {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .object-threat.high { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
+        .object-threat.medium { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
+        .object-threat.low { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+
+        /* Algorithm Selection */
+        .algorithm-select {
+            width: 100%;
+            padding: 12px;
+            background: #1a1f2f;
+            border: 1px solid #2a3248;
+            border-radius: 8px;
+            color: #ffffff;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .algorithm-select option {
+            background: #1a1f2f;
+        }
+
+        .algorithm-info {
+            background: #1a1f2f;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 13px;
+            color: #8b95b0;
+            line-height: 1.6;
+            border: 1px solid #2a3248;
+        }
+
+        .algorithm-info strong {
+            color: #00ff88;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        /* Parameter Sliders */
+        .param-slider {
+            margin-bottom: 15px;
+        }
+
+        .param-slider label {
+            display: flex;
+            justify-content: space-between;
+            color: #8b95b0;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .param-slider input {
+            width: 100%;
+            height: 5px;
+            background: #2a3248;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .param-slider input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #00ff88;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Center Panel - 3D Visualization */
+        .center-panel {
+            background: #1a1f2f;
+            border-radius: 15px;
+            border: 1px solid #2a3248;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .visualization-header {
+            padding: 15px 20px;
+            background: #0f1625;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #2a3248;
+        }
+
+        .viz-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .viz-title h2 {
+            color: #00ff88;
+            font-size: 16px;
+        }
+
+        .viz-badge {
+            background: #2a3248;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #ffffff;
+        }
+
+        .viz-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .viz-btn {
+            padding: 6px 15px;
+            background: transparent;
+            border: 1px solid #2a3248;
+            color: #8b95b0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .viz-btn:hover {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .viz-btn.active {
+            background: #00ff88;
+            color: #0a0f1a;
+            border-color: #00ff88;
+        }
+
+        #canvas-container {
+            flex: 1;
+            width: 100%;
+            background: #0a0f1a;
+        }
+
+        /* Right Panel - Data Display */
+        .right-panel {
+            background: #1a1f2f;
+            border-radius: 15px;
+            border: 1px solid #2a3248;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* Live Data Cards */
+        .data-card {
+            background: #0f1625;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .data-card-title {
+            color: #00ff88;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #2a3248;
+        }
+
+        .data-label {
+            color: #8b95b0;
+            font-size: 13px;
+        }
+
+        .data-value {
+            color: #ffffff;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .sensor-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: #1a1f2f;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .sensor-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff4444; box-shadow: 0 0 10px #ff4444; }
+        .dot-green { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+        .dot-blue { background: #4444ff; box-shadow: 0 0 10px #4444ff; }
+
+        .threat-meter {
+            height: 8px;
+            background: #1a1f2f;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .threat-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #ffaa00, #ff4444);
+            transition: width 0.3s;
+        }
+
+        .prediction-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .prediction-item {
+            background: #1a1f2f;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .prediction-label {
+            color: #8b95b0;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .prediction-value {
+            color: #00ff88;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .confidence-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 20px;
+            color: #00ff88;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT PANEL - CONTROLS & ALGORITHMS -->
+        <div class="left-panel">
+            <div class="panel-title">
+                <span>🎮 CONTROL PANEL</span>
+            </div>
+
+            <!-- Object Count Control -->
+            <div class="control-section">
+                <div class="section-header">
+                    <span>OBJECT TRACKING</span>
+                    <span id="activeObjects">3 Active</span>
+                </div>
+                
+                <div class="object-count-control">
+                    <button class="count-btn" onclick="changeObjectCount(-1)">−</button>
+                    <span class="count-display" id="objectCount">3</span>
+                    <button class="count-btn" onclick="changeObjectCount(1)">+</button>
+                </div>
+
+                <div class="object-list" id="objectList">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Add this to your index.html inside the left panel -->
+<div class="control-section">
+    <div class="section-header">
+        <span>🤖 MACHINE LEARNING</span>
+        <span id="mlStatus" style="color: #00ff88;">Active</span>
+    </div>
+
+    <!-- Model Selection -->
+        <option value="lstm">LSTM Neural Network (Advanced)</option>
+        <option value="gru">GRU Network (Faster)</option>
+        <option value="transformer">Transformer (Experimental)</option>
+        <option value="ensemble">Ensemble (All Models)</option>
+    </select>
+
+    <!-- ML Controls -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0;">
+        <button class="viz-btn" onclick="startDataCollection()">📊 Start Collection</button>
+        <button class="viz-btn" onclick="stopDataCollection()">💾 Stop & Save</button>
+        <button class="viz-btn" onclick="trainModel()">🎓 Train Model</button>
+        <button class="viz-btn" onclick="evaluateModel()">📈 Evaluate</button>
+    </div>
+
+    <!-- ML Stats -->
+    <div style="background: #1a1f2f; padding: 12px; border-radius: 8px; margin-top: 10px;">
+        <div class="data-row">
+            <span>Training Samples:</span>
+            <span id="trainingSamples">1,247</span>
+        </div>
+        <div class="data-row">
+            <span>Model Accuracy:</span>
+            <span id="modelAccuracy">94.3%</span>
+        </div>
+        <div class="data-row">
+            <span>Prediction Horizon:</span>
+            <span id="predHorizon">5 steps</span>
+        </div>
+        <div class="threat-meter" style="margin: 10px 0;">
+            <div class="threat-fill" id="confidenceMeter" style="width: 94%; background: #00ff88;"></div>
+        </div>
+        <div style="text-align: center; color: #8b95b0; font-size: 12px;">
+            Confidence Level
+        </div>
+    </div>
+
+    <!-- Feature Importance -->
+    <div style="margin-top: 15px;">
+        <div class="section-header">📊 Feature Importance</div>
+        <div id="featureImportance">
+            <div class="data-row"><span>Position History:</span> <span>35%</span></div>
+            <div class="data-row"><span>Velocity:</span> <span>28%</span></div>
+            <div class="data-row"><span>Sensor Readings:</span> <span>22%</span></div>
+            <div class="data-row"><span>Threat Score:</span> <span>15%</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add ML JavaScript -->
+<script>
+// ML Model Control
+let collecting = false;
+let mlModel = 'lstm';
+
+function changeMLModel() {
+    mlModel = document.getElementById('mlModelSelect').value;
+    updateMLInfo();
+}
+
+function startDataCollection() {
+    collecting = true;
+    document.getElementById('mlStatus').innerHTML = '🟢 Collecting';
+    document.getElementById('mlStatus').style.color = '#00ff88';
+}
+
+function stopDataCollection() {
+    collecting = false;
+    document.getElementById('mlStatus').innerHTML = '💾 Saved';
+    
+    // Simulate saving
+    setTimeout(() => {
+        document.getElementById('mlStatus').innerHTML = 'Active';
+        document.getElementById('trainingSamples').innerHTML = 
+            (parseInt(document.getElementById('trainingSamples').innerHTML.replace(',', '')) + 50).toLocaleString();
+    }, 1000);
+}
+
+function trainModel() {
+    document.getElementById('mlStatus').innerHTML = '🔄 Training';
+    
+    // Simulate training
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += 10;
+        document.getElementById('confidenceMeter').style.width = progress + '%';
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+            document.getElementById('mlStatus').innerHTML = '✅ Trained';
+            document.getElementById('modelAccuracy').innerHTML = (94 + Math.random() * 3).toFixed(1) + '%';
+            
+            setTimeout(() => {
+                document.getElementById('mlStatus').innerHTML = 'Active';
+            }, 2000);
+        }
+    }, 500);
+}
+
+function evaluateModel() {
+    // Show evaluation results
+    alert(`
+📊 Model Evaluation Results:
+• Mean Error: 3.2 cm
+• 90th Percentile: 5.8 cm
+• Accuracy @10cm: 94.3%
+• Inference Time: 8ms
+    `);
+}
+
+function updateMLInfo() {
+    const info = {
+        'lstm': { accuracy: '94.3%', samples: '1,247' },
+        'gru': { accuracy: '92.1%', samples: '1,247' },
+        'transformer': { accuracy: '95.7%', samples: '847' },
+        'ensemble': { accuracy: '96.2%', samples: '2,094' }
+    };
+    
+    document.getElementById('modelAccuracy').innerHTML = info[mlModel].accuracy;
+    document.getElementById('trainingSamples').innerHTML = info[mlModel].samples;
+    document.getElementById('confidenceMeter').style.width = info[mlModel].accuracy;
+}
+</script>
+
+            <!-- Algorithm Selection -->
+            <div class="control-section">
+                <div class="section-header">
+                    <span>🧠 CORE ALGORITHMS</span>
+                </div>
+
+                <select class="algorithm-select" id="algorithmSelect" onchange="changeAlgorithm()">
+                    <option value="kalman">Kalman Filter (Smooth Tracking)</option>
+                    <option value="particle" selected>Particle Filter (Multi-Hypothesis)</option>
+                    <option value="behavior">Behavior Analyzer (Pattern Recognition)</option>
+                    <option value="threat">Threat Intelligence (Risk Assessment)</option>
+                </select>
+
+                <div class="algorithm-info" id="algorithmInfo">
+                    <strong>Particle Filter</strong>
+                    Uses 500 particles to track multiple hypotheses. Best for erratic movements and occlusion handling. Maintains multiple possibilities simultaneously.
+                </div>
+
+                <!-- Algorithm Parameters -->
+                <div style="margin-top: 20px;">
+                    <div class="param-slider">
+                        <label>
+                            <span>Particle Count</span>
+                            <span id="particleCountVal">500</span>
+                        </label>
+                        <input type="range" id="particleCount" min="100" max="1000" value="500" onchange="updateParams()">
+                    </div>
+
+                    <div class="param-slider">
+                        <label>
+                            <span>Process Noise</span>
+                            <span id="noiseVal">0.1</span>
+                        </label>
+                        <input type="range" id="processNoise" min="0.01" max="0.5" step="0.01" value="0.1" onchange="updateParams()">
+                    </div>
+
+                    <div class="param-slider">
+                        <label>
+                            <span>Detection Threshold</span>
+                            <span id="thresholdVal">0.7</span>
+                        </label>
+                        <input type="range" id="detectThreshold" min="0.1" max="0.9" step="0.1" value="0.7" onchange="updateParams()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- KALMAN FILTER OUTPUT SECTION -->
+<div class="data-card">
+    <div class="card-header">
+        <span>📈 KALMAN FILTER OUTPUT</span>
+        <span class="confidence-badge" id="kalmanStatus">Active</span>
+    </div>
+    
+    <!-- Current State -->
+    <div style="margin-bottom: 15px;">
+        <div style="color: #8b95b0; font-size: 12px; margin-bottom: 8px;">SMOOTHED POSITION</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div style="background: #0f1625; padding: 12px; border-radius: 8px;">
+                <div style="color: #8b95b0; font-size: 11px;">X Position</div>
+                <div style="display: flex; align-items: baseline; gap: 5px;">
+                    <span style="color: #00ff88; font-size: 24px; font-weight: 600;" id="kalmanX">45.67</span>
+                    <span style="color: #8b95b0; font-size: 12px;">cm</span>
+                </div>
+                <div style="color: #8b95b0; font-size: 10px;">Raw: 46.21 cm</div>
+            </div>
+            <div style="background: #0f1625; padding: 12px; border-radius: 8px;">
+                <div style="color: #8b95b0; font-size: 11px;">Y Position</div>
+                <div style="display: flex; align-items: baseline; gap: 5px;">
+                    <span style="color: #00ff88; font-size: 24px; font-weight: 600;" id="kalmanY">52.34</span>
+                    <span style="color: #8b95b0; font-size: 12px;">cm</span>
+                </div>
+                <div style="color: #8b95b0; font-size: 10px;">Raw: 53.12 cm</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Velocity & Acceleration -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <div>
+            <div style="color: #8b95b0; font-size: 11px; margin-bottom: 5px;">VELOCITY</div>
+            <div style="background: #0f1625; padding: 10px; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #8b95b0;">Vx:</span>
+                    <span style="color: #00ff88;" id="kalmanVx">2.15 cm/s</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #8b95b0;">Vy:</span>
+                    <span style="color: #00ff88;" id="kalmanVy">-1.87 cm/s</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid #2a3248;">
+                    <span style="color: #8b95b0;">Speed:</span>
+                    <span style="color: #ffaa00; font-weight: 600;" id="kalmanSpeed">2.85 cm/s</span>
+                </div>
+            </div>
+        </div>
+        
+        <div>
+            <div style="color: #8b95b0; font-size: 11px; margin-bottom: 5px;">ACCELERATION</div>
+            <div style="background: #0f1625; padding: 10px; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #8b95b0;">Ax:</span>
+                    <span style="color: #ffaa00;" id="kalmanAx">0.12 cm/s²</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #8b95b0;">Ay:</span>
+                    <span style="color: #ffaa00;" id="kalmanAy">-0.08 cm/s²</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 5px; padding-top: 5px; border-top: 1px solid #2a3248;">
+                    <span style="color: #8b95b0;">Magnitude:</span>
+                    <span style="color: #ffaa00;" id="kalmanAccel">0.14 cm/s²</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Uncertainty Meter -->
+    <div style="margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; color: #8b95b0; font-size: 12px; margin-bottom: 5px;">
+            <span>POSITION UNCERTAINTY</span>
+            <span id="kalmanUncertainty">±1.23 cm</span>
+        </div>
+        <div class="threat-meter" style="height: 8px;">
+            <div class="threat-fill" id="uncertaintyMeter" style="width: 25%; background: #00ff88;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #8b95b0; margin-top: 3px;">
+            <span>Certain</span>
+            <span>Uncertain</span>
+        </div>
+    </div>
+    
+    <!-- Kalman Gain & Innovation -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <div style="background: #0f1625; padding: 10px; border-radius: 6px;">
+            <div style="color: #8b95b0; font-size: 11px;">KALMAN GAIN</div>
+            <div style="font-size: 20px; font-weight: 600; color: #00ff88;" id="kalmanGain">0.76</div>
+            <div style="font-size: 10px; color: #8b95b0;">
+                <span id="measurementTrust">76%</span> Measurement | 
+                <span id="predictionTrust">24%</span> Prediction
+            </div>
+        </div>
+        
+        <div style="background: #0f1625; padding: 10px; border-radius: 6px;">
+            <div style="color: #8b95b0; font-size: 11px;">INNOVATION</div>
+            <div style="font-size: 20px; font-weight: 600; color: #ffaa00;" id="kalmanInnovation">0.54 cm</div>
+            <div style="font-size: 10px; color: #8b95b0;">Measurement residual</div>
+        </div>
+    </div>
+    
+    <!-- Prediction with Uncertainty -->
+    <div style="margin-top: 15px;">
+        <div style="color: #8b95b0; font-size: 12px; margin-bottom: 8px;">🔮 PREDICTED TRAJECTORY</div>
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;" id="kalmanPredictions">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+    
+    <!-- Filter Statistics -->
+    <div style="margin-top: 15px; background: #0f1625; padding: 12px; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: #8b95b0;">Filter Confidence:</span>
+            <span style="color: #00ff88; font-weight: 600;" id="filterConfidence">94.2%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="color: #8b95b0;">Convergence:</span>
+            <span style="color: #00ff88;" id="filterConvergence">87%</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span style="color: #8b95b0;">Samples Processed:</span>
+            <span style="color: #8b95b0;" id="samplesProcessed">1,247</span>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Chart: Raw vs Filtered -->
+<div class="data-card">
+    <div class="card-header">
+        <span>📊 RAW vs FILTERED COMPARISON</span>
+    </div>
+    <canvas id="kalmanComparisonChart" height="150"></canvas>
+</div>
+
+            <!-- View Controls -->
+            <div class="control-section">
+                <div class="section-header">
+                    <span>🎥 VIEW OPTIONS</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button class="viz-btn" onclick="setView('top')">Top View</button>
+                    <button class="viz-btn" onclick="setView('side')">Side View</button>
+                    <button class="viz-btn" onclick="setView('dynamic')">Dynamic</button>
+                    <button class="viz-btn" onclick="toggleTrails()">Toggle Trails</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER PANEL - 3D VISUALIZATION -->
+        <div class="center-panel">
+            <div class="visualization-header">
+                <div class="viz-title">
+                    <h2>🌐 3D MULTI-OBJECT TRACKING</h2>
+                    <span class="viz-badge" id="trackingStatus">LIVE</span>
+                </div>
+                <div class="viz-controls">
+                    <button class="viz-btn active" onclick="switchVisualization('3d')">3D</button>
+                    <button class="viz-btn" onclick="switchVisualization('radar')">Radar</button>
+                    <button class="viz-btn" onclick="switchVisualization('heatmap')">Heatmap</button>
+                </div>
+            </div>
+            <div id="canvas-container"></div>
+        </div>
+
+        <!-- RIGHT PANEL - LIVE DATA -->
+        <div class="right-panel">
+            <div class="panel-title">
+                <span>📊 LIVE TRACKING DATA</span>
+                <span class="viz-badge" id="selectedObject">Object 1</span>
+            </div>
+
+            <!-- Selected Object Data -->
+            <div class="data-card">
+                <div class="data-card-title">
+                    <span>📍 POSITION DATA</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">X Position:</span>
+                    <span class="data-value" id="xPos">79.78 cm</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Y Position:</span>
+                    <span class="data-value" id="yPos">43.82 cm</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Z Position:</span>
+                    <span class="data-value" id="zPos">0.00 cm</span>
+                </div>
+            </div>
+
+            <!-- Sensor Readings -->
+            <div class="data-card">
+                <div class="data-card-title">
+                    <span>📡 SENSOR READINGS</span>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-dot dot-red"></span>
+                    <span class="data-label">Sensor 1:</span>
+                    <span class="data-value" style="margin-left: auto;" id="sensor1">51.66 cm</span>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-dot dot-green"></span>
+                    <span class="data-label">Sensor 2:</span>
+                    <span class="data-value" style="margin-left: auto;" id="sensor2">16.93 cm</span>
+                </div>
+                <div class="sensor-row">
+                    <span class="sensor-dot dot-blue"></span>
+                    <span class="data-label">Sensor 3:</span>
+                    <span class="data-value" style="margin-left: auto;" id="sensor3">39.65 cm</span>
+                </div>
+            </div>
+
+            <!-- Velocity & Motion -->
+            <div class="data-card">
+                <div class="data-card-title">
+                    <span>⚡ MOTION DATA</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Velocity X:</span>
+                    <span class="data-value" id="velX">1.09 cm/s</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Velocity Y:</span>
+                    <span class="data-value" id="velY">-6.24 cm/s</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Speed:</span>
+                    <span class="data-value" id="speed">6.34 cm/s</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Acceleration:</span>
+                    <span class="data-value" id="accel">0.23 cm/s²</span>
+                </div>
+            </div>
+
+            <!-- Threat Assessment -->
+            <div class="data-card">
+                <div class="data-card-title">
+                    <span>⚠️ THREAT ASSESSMENT</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Threat Level:</span>
+                    <span class="data-value" id="threatLevel" style="color: #ffaa00;">MEDIUM</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Threat Score:</span>
+                    <span class="data-value" id="threatScore">30/100</span>
+                </div>
+                <div class="threat-meter">
+                    <div class="threat-fill" id="threatMeter" style="width: 30%;"></div>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Behavior:</span>
+                    <span class="data-value" id="behavior">Moving Steady</span>
+                </div>
+            </div>
+
+            <!-- BEHAVIOR ANALYSIS SECTION -->
+<div class="data-card">
+    <div class="card-header">
+        <span>🧠 AI BEHAVIOR ANALYSIS</span>
+        <span class="confidence-badge" id="behaviorConfidence">95%</span>
+    </div>
+    
+    <div id="behaviorDisplay">
+        <!-- Primary Behavior -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffaa00;" id="behaviorColor"></div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #00ff88; font-weight: 600;" id="primaryBehavior">Loitering</span>
+                    <span style="color: #8b95b0;" id="behaviorProbability">87%</span>
+                </div>
+                <div class="threat-meter" style="height: 4px; margin: 5px 0;">
+                    <div class="threat-fill" id="behaviorMeter" style="width: 87%; background: #ffaa00;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Behavior Description -->
+        <div style="background: #1a1f2f; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="color: #8b95b0; font-size: 12px; margin-bottom: 5px;">AI Analysis:</div>
+            <div style="color: #ffffff; font-size: 14px;" id="behaviorDescription">
+                Object lingering in same area for extended period. Suggest monitoring.
+            </div>
+        </div>
+        
+        <!-- All Behaviors -->
+        <div style="margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; color: #8b95b0; font-size: 12px; margin-bottom: 8px;">
+                <span>Behavior</span>
+                <span>Probability</span>
+            </div>
+            <div id="allBehaviors">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Behavior Features -->
+        <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="background: #0f1625; padding: 8px; border-radius: 5px;">
+                <div style="color: #8b95b0; font-size: 11px;">Speed</div>
+                <div style="color: #00ff88; font-size: 14px;" id="behaviorSpeed">6.3 cm/s</div>
+            </div>
+            <div style="background: #0f1625; padding: 8px; border-radius: 5px;">
+                <div style="color: #8b95b0; font-size: 11px;">Direction Change</div>
+                <div style="color: #ffaa00; font-size: 14px;" id="behaviorDirection">45°</div>
+            </div>
+            <div style="background: #0f1625; padding: 8px; border-radius: 5px;">
+                <div style="color: #8b95b0; font-size: 11px;">Consistency</div>
+                <div style="color: #00ff88; font-size: 14px;" id="behaviorConsistency">78%</div>
+            </div>
+            <div style="background: #0f1625; padding: 8px; border-radius: 5px;">
+                <div style="color: #8b95b0; font-size: 11px;">Stationary</div>
+                <div style="color: #ffaa00; font-size: 14px;" id="behaviorStationary">32%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- INTERACTION ANALYSIS -->
+<div class="data-card">
+    <div class="card-header">
+        <span>🔄 OBJECT INTERACTIONS</span>
+    </div>
+    <div id="interactionDisplay">
+        <!-- Populated by JavaScript -->
+    </div>
+</div>
+
+            <!-- Prediction -->
+            <div class="data-card">
+                <div class="data-card-title">
+                    <span>🔮 PREDICTION (Next 3 steps)</span>
+                </div>
+                
+                <div class="prediction-box">
+                    <div class="prediction-item">
+                        <div class="prediction-label">Step 1</div>
+                        <div class="prediction-value" id="pred1">(82, 41)</div>
+                    </div>
+                    <div class="prediction-item">
+                        <div class="prediction-label">Step 2</div>
+                        <div class="prediction-value" id="pred2">(85, 38)</div>
+                    </div>
+                    <div class="prediction-item">
+                        <div class="prediction-label">Step 3</div>
+                        <div class="prediction-value" id="pred3">(88, 35)</div>
+                    </div>
+                    <div class="prediction-item">
+                        <div class="prediction-label">Confidence</div>
+                        <div class="prediction-value" id="confidence">92%</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <span class="confidence-badge" id="algoStatus">Particle Filter Active</span>
+                </div>
+            </div>
+
+            <!-- Export Button -->
+            <button class="viz-btn" style="width: 100%; margin-top: 10px; padding: 12px;" onclick="exportData()">
+                📊 EXPORT TRACKING DATA
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== GLOBAL VARIABLES ====================
+        let objectCount = 3;
+        let selectedObject = 1;
+        let objects = [];
+        let time = 0;
+        let currentAlgorithm = 'particle';
+        let trails = true;
+        
+        // Sensor positions
+        const sensors = [
+            { x: 30, y: 30, z: 0, color: '#ff4444' },
+            { x: 70, y: 30, z: 0, color: '#00ff88' },
+            { x: 50, y: 70, z: 0, color: '#4444ff' }
+        ];
+
+        // ==================== OBJECT MANAGEMENT ====================
+        function changeObjectCount(delta) {
+            objectCount = Math.max(1, Math.min(5, objectCount + delta));
+            document.getElementById('objectCount').textContent = objectCount;
+            document.getElementById('activeObjects').textContent = objectCount + ' Active';
+            
+            // Regenerate objects
+            generateObjects();
+            updateObjectList();
+        }
+
+        function generateObjects() {
+            objects = [];
+            for (let i = 1; i <= objectCount; i++) {
+                // Different movement patterns for each object
+                const pattern = i % 3;
+                let obj;
+                
+                if (pattern === 0) {
+                    // Circular motion
+                    obj = {
+                        id: i,
+                        x: 50 + 30 * Math.sin(time * 0.5 + i),
+                        y: 50 + 20 * Math.cos(time * 0.7 + i),
+                        vx: 15 * Math.cos(time * 0.5 + i),
+                        vy: -14 * Math.sin(time * 0.7 + i),
+                        type: 'patrol',
+                        behavior: 'circular'
+                    };
+                } else if (pattern === 1) {
+                    // Linear motion
+                    obj = {
+                        id: i,
+                        x: 20 + (time * 10) % 60,
+                        y: 30 + (i * 20),
+                        vx: 10,
+                        vy: 0,
+                        type: 'linear',
+                        behavior: 'straight'
+                    };
+                } else {
+                    // Erratic motion (intruder)
+                    obj = {
+                        id: i,
+                        x: 70 + 15 * Math.sin(time * 1.5 + i),
+                        y: 40 + 25 * Math.cos(time * 1.8 + i * 2),
+                        vx: 22.5 * Math.cos(time * 1.5 + i),
+                        vy: -45 * Math.sin(time * 1.8 + i * 2),
+                        type: 'intruder',
+                        behavior: 'erratic'
+                    };
+                }
+                
+                // Calculate threat based on position and behavior
+                const distToCenter = Math.sqrt((obj.x - 50)**2 + (obj.y - 50)**2);
+                const speed = Math.sqrt(obj.vx**2 + obj.vy**2);
+                
+                let threatScore = Math.min(100, Math.max(0, 
+                    (80 - distToCenter) * 0.6 + (speed * 2)
+                ));
+                
+                let threatLevel = 'LOW';
+                if (threatScore > 70) threatLevel = 'HIGH';
+                else if (threatScore > 30) threatLevel = 'MEDIUM';
+                
+                obj.threatScore = threatScore;
+                obj.threatLevel = threatLevel;
+                obj.speed = speed;
+                
+                objects.push(obj);
+            }
+        }
+
+        function updateObjectList() {
+            const listContainer = document.getElementById('objectList');
+            listContainer.innerHTML = '';
+            
+            objects.forEach(obj => {
+                const item = document.createElement('div');
+                item.className = `object-item ${obj.threatLevel.toLowerCase()} ${obj.id === selectedObject ? 'selected' : ''}`;
+                item.onclick = () => selectObject(obj.id);
+                
+                item.innerHTML = `
+                    <div class="object-info">
+                        <h4>Object #${obj.id}</h4>
+                        <p>${obj.type} | ${obj.behavior}</p>
+                    </div>
+                    <div class="object-threat ${obj.threatLevel.toLowerCase()}">
+                        ${obj.threatLevel}
+                    </div>
+                `;
+                
+                listContainer.appendChild(item);
+            });
+        }
+
+        function selectObject(id) {
+            selectedObject = id;
+            document.getElementById('selectedObject').textContent = `Object ${id}`;
+            updateObjectList();
+            updateDataDisplay();
+        }
+
+        // ==================== ALGORITHM MANAGEMENT ====================
+        function changeAlgorithm() {
+            const select = document.getElementById('algorithmSelect');
+            currentAlgorithm = select.value;
+            
+            const infoDiv = document.getElementById('algorithmInfo');
+            const algoStatus = document.getElementById('algoStatus');
+            
+            switch(currentAlgorithm) {
+                case 'kalman':
+                    infoDiv.innerHTML = `
+                        <strong>Kalman Filter</strong>
+                        Optimal estimator for linear systems. Provides smooth tracking with prediction. Best for consistent, predictable movement. Uses recursive algorithm to estimate state from noisy measurements.
+                    `;
+                    algoStatus.textContent = 'Kalman Filter Active';
+                    break;
+                    
+                case 'particle':
+                    infoDiv.innerHTML = `
+                        <strong>Particle Filter</strong>
+                        Uses 500 particles to track multiple hypotheses. Best for erratic movements and occlusion handling. Maintains multiple possibilities simultaneously. Can recover from tracking loss.
+                    `;
+                    algoStatus.textContent = 'Particle Filter Active';
+                    break;
+                    
+                case 'behavior':
+                    infoDiv.innerHTML = `
+                        <strong>Behavior Analyzer</strong>
+                        Recognizes patterns: loitering, rapid approach, zigzag, patrolling. Assigns behavioral signatures to objects. Learns normal vs suspicious patterns over time.
+                    `;
+                    algoStatus.textContent = 'Behavior Analysis Active';
+                    break;
+                    
+                case 'threat':
+                    infoDiv.innerHTML = `
+                        <strong>Threat Intelligence</strong>
+                        Multi-factor threat scoring: proximity (40%), velocity (30%), behavior (20%), history (10%). Context-aware assessment with predictive threat forecasting.
+                    `;
+                    algoStatus.textContent = 'Threat Intelligence Active';
+                    break;
+            }
+            
+            updateParams();
+        }
+
+        function updateParams() {
+            const particleCount = document.getElementById('particleCount').value;
+            const processNoise = document.getElementById('processNoise').value;
+            const threshold = document.getElementById('detectThreshold').value;
+            
+            document.getElementById('particleCountVal').textContent = particleCount;
+            document.getElementById('noiseVal').textContent = processNoise;
+            document.getElementById('thresholdVal').textContent = threshold;
+            
+            // Update algorithm behavior based on params
+            console.log(`Algorithm params updated: ${particleCount} particles, noise ${processNoise}, threshold ${threshold}`);
+        }
+
+        // ==================== DATA UPDATE ====================
+        function updateSimulation() {
+            time += 0.05;
+            
+            // Update object positions
+            generateObjects();
+            
+            // Update display for selected object
+            updateDataDisplay();
+            
+            // Update object list
+            updateObjectList();
+            
+            // Update 3D visualization
+            if (window.visualizer3D) {
+                window.visualizer3D.updateObjects(objects, sensors);
+            }
+        }
+
+        function updateDataDisplay() {
+            const obj = objects.find(o => o.id === selectedObject) || objects[0];
+            if (!obj) return;
+            
+            // Calculate sensor distances
+            const d1 = Math.sqrt((obj.x - 30)**2 + (obj.y - 30)**2);
+            const d2 = Math.sqrt((obj.x - 70)**2 + (obj.y - 30)**2);
+            const d3 = Math.sqrt((obj.x - 50)**2 + (obj.y - 70)**2);
+            
+            // Calculate predictions (different based on algorithm)
+            let pred1, pred2, pred3, confidence;
+            
+            switch(currentAlgorithm) {
+                case 'kalman':
+                    pred1 = { x: obj.x + obj.vx * 0.3, y: obj.y + obj.vy * 0.3 };
+                    pred2 = { x: obj.x + obj.vx * 0.6, y: obj.y + obj.vy * 0.6 };
+                    pred3 = { x: obj.x + obj.vx * 0.9, y: obj.y + obj.vy * 0.9 };
+                    confidence = 85 + Math.random() * 10;
+                    break;
+                    
+                case 'particle':
+                    // Particle filter adds some uncertainty
+                    pred1 = { 
+                        x: obj.x + obj.vx * 0.3 + (Math.random() - 0.5) * 2,
+                        y: obj.y + obj.vy * 0.3 + (Math.random() - 0.5) * 2
+                    };
+                    pred2 = { 
+                        x: obj.x + obj.vx * 0.6 + (Math.random() - 0.5) * 3,
+                        y: obj.y + obj.vy * 0.6 + (Math.random() - 0.5) * 3
+                    };
+                    pred3 = { 
+                        x: obj.x + obj.vx * 0.9 + (Math.random() - 0.5) * 4,
+                        y: obj.y + obj.vy * 0.9 + (Math.random() - 0.5) * 4
+                    };
+                    confidence = 92 + Math.random() * 5;
+                    break;
+                    
+                default:
+                    pred1 = { x: obj.x + obj.vx * 0.3, y: obj.y + obj.vy * 0.3 };
+                    pred2 = { x: obj.x + obj.vx * 0.6, y: obj.y + obj.vy * 0.6 };
+                    pred3 = { x: obj.x + obj.vx * 0.9, y: obj.y + obj.vy * 0.9 };
+                    confidence = 90;
+            }
+            
+            // Update UI
+            document.getElementById('xPos').textContent = obj.x.toFixed(2) + ' cm';
+            document.getElementById('yPos').textContent = obj.y.toFixed(2) + ' cm';
+            document.getElementById('zPos').textContent = '0.00 cm';
+            
+            document.getElementById('sensor1').textContent = d1.toFixed(2) + ' cm';
+            document.getElementById('sensor2').textContent = d2.toFixed(2) + ' cm';
+            document.getElementById('sensor3').textContent = d3.toFixed(2) + ' cm';
+            
+            document.getElementById('velX').textContent = obj.vx.toFixed(2) + ' cm/s';
+            document.getElementById('velY').textContent = obj.vy.toFixed(2) + ' cm/s';
+            document.getElementById('speed').textContent = obj.speed.toFixed(2) + ' cm/s';
+            document.getElementById('accel').textContent = (Math.random() * 0.5).toFixed(2) + ' cm/s²';
+            
+            document.getElementById('threatLevel').textContent = obj.threatLevel;
+            document.getElementById('threatScore').textContent = obj.threatScore.toFixed(0) + '/100';
+            document.getElementById('threatMeter').style.width = obj.threatScore + '%';
+            document.getElementById('behavior').textContent = obj.behavior;
+            
+            document.getElementById('pred1').textContent = `(${pred1.x.toFixed(0)}, ${pred1.y.toFixed(0)})`;
+            document.getElementById('pred2').textContent = `(${pred2.x.toFixed(0)}, ${pred2.y.toFixed(0)})`;
+            document.getElementById('pred3').textContent = `(${pred3.x.toFixed(0)}, ${pred3.y.toFixed(0)})`;
+            document.getElementById('confidence').textContent = confidence.toFixed(0) + '%';
+        }
+
+        // ==================== VIEW CONTROLS ====================
+        function setView(view) {
+            if (window.visualizer3D) {
+                window.visualizer3D.setCameraView(view);
+            }
+        }
+
+        function toggleTrails() {
+            trails = !trails;
+            if (window.visualizer3D) {
+                window.visualizer3D.toggleTrails(trails);
+            }
+        }
+
+        function switchVisualization(mode) {
+            // Update button states
+            document.querySelectorAll('.viz-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Here you would switch between 3D, Radar, and Heatmap
+            console.log('Switching to:', mode);
+        }
+
+        // ==================== EXPORT ====================
+        function exportData() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                algorithm: currentAlgorithm,
+                objectCount: objectCount,
+                selectedObject: selectedObject,
+                objects: objects,
+                sensorPositions: sensors
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tracking_data_${Date.now()}.json`;
+            a.click();
+        }
+
+        // ==================== INITIALIZATION ====================
+        setInterval(updateSimulation, 200);
+        generateObjects();
+        updateObjectList();
+        changeAlgorithm(); // Initialize algorithm info
+    </script>
+
+    <!-- Include 3D Visualization -->
+    <script src="3d_visualization.js"></script>
+</body>
+</html>
