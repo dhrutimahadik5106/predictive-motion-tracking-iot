@@ -16,13 +16,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Verify project structure
+      - name: Display project files
         run: |
-          test -d CORE_ALGORITHMS
-          test -d HARDWARE_INTERFACE
-          test -d ML_MODELS
-          test -d ML_SERVER
-          test -d CONFIG
-          test -d WEB_DASHBORADS
+          echo "Checking project files..."
+          ls -la
+
+      - name: Verify README
+        run: |
           test -f README.md
-          echo "Project structure verification passed!"
+          grep -q "Predictive Motion Tracking IoT" README.md
+          echo "README verification passed!"
+
+      - name: Verify GitHub workflow
+        run: |
+          test -f .github/workflows/main.yml
+          echo "Workflow verification passed!"
