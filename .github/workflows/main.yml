@@ -1,0 +1,28 @@
+
+name: Project Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify project structure
+        run: |
+          test -d CORE_ALGORITHMS
+          test -d HARDWARE_INTERFACE
+          test -d ML_MODELS
+          test -d ML_SERVER
+          test -d CONFIG
+          test -d WEB_DASHBORADS
+          test -f README.md
+          echo "Project structure verification passed!"
